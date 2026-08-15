@@ -84,18 +84,36 @@ public class ChatListener implements Listener, Reloadable {
             // colour as literal legacy codes instead: they survive plain-text serialization and are rendered
             // by LPC's own legacy colour parser. Hex (§x) colours cannot be represented there, so they keep
             // using component colours.
-            if (shouldInjectLegacyCodes(event.getPlayer(), coloured)) {
+            org.bukkit.plugin.Plugin formatter = findPlainTextChatFormatter();
+            boolean canUseFormatterColours = event.getPlayer().hasPermission("lpc.chatcolor");
+
+            if (shouldInjectLegacyCodes(event.getPlayer(), coloured, formatter, canUseFormatterColours)) {
                 event.message(Component.text(coloured.replace('§', '&')));
-                debugLog("final: legacy codes injected for LPC");
+                debugLog("final: legacy codes injected (formatter=" + formatter.getName() + ", lpc.chatcolor=" + canUseFormatterColours + ")");
             }
             else {
                 event.message(LEGACY_SERIALIZER.deserialize(coloured));
-                debugLog("final: component colours set");
+                debugLog("final: component colours set (formatter=" + (formatter != null ? formatter.getName() : "none") + ", lpc.chatcolor=" + canUseFormatterColours + ")");
             }
         }, event);
     }
 
-    private static boolean shouldInjectLegacyCodes(Player player, String coloured) {
+    // Plugins that rebuild chat messages from plain text, discarding component colours applied by other plugins.
+    private static final String[] PLAIN_TEXT_FORMATTER_NAMES = { "LPC", "JoehesLPC", "LPC-Chat", "LPC-MiniMessage", "lpc-chat" };
+
+    private static org.bukkit.plugin.Plugin findPlainTextChatFormatter() {
+        for (String name : PLAIN_TEXT_FORMATTER_NAMES) {
+            org.bukkit.plugin.Plugin plugin = Bukkit.getPluginManager().getPlugin(name);
+
+            if (plugin != null && plugin.isEnabled()) {
+                return plugin;
+            }
+        }
+
+        return null;
+    }
+
+    private static boolean shouldInjectLegacyCodes(Player player, String coloured, org.bukkit.plugin.Plugin formatter, boolean canUseFormatterColours) {
         if (coloured == null || coloured.indexOf('§') == -1) {
             return false;
         }
@@ -105,13 +123,11 @@ public class ChatListener implements Listener, Reloadable {
             return false;
         }
 
-        org.bukkit.plugin.Plugin lpc = Bukkit.getPluginManager().getPlugin("LPC");
-
-        if (lpc == null || !lpc.isEnabled()) {
+        if (formatter == null) {
             return false;
         }
 
-        return player.hasPermission("lpc.chatcolor");
+        return canUseFormatterColours;
     }
 
     private void debugLog(String message) {
