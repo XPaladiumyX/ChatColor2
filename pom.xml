@@ -1,0 +1,142 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>me.sulphate</groupId>
+  <artifactId>ChatColor2</artifactId>
+  <version>1.16.1</version>
+  <name>ChatColor2</name>
+
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <repositories>
+    <repository>
+      <id>papermc</id>
+      <url>https://repo.papermc.io/repository/maven-public/</url>
+    </repository>
+
+    <repository>
+      <id>CodeMC</id>
+      <url>https://repo.codemc.org/repository/maven-public</url>
+    </repository>
+
+    <repository>
+      <id>placeholderapi</id>
+      <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
+    </repository>
+
+    <repository>
+      <id>minecraft-repo</id>
+      <url>https://libraries.minecraft.net/</url>
+    </repository>
+  </repositories>
+
+  <dependencies>
+    <!-- Paper API (MC 1.26.1 / server 1.26.1.2) -->
+    <dependency>
+      <groupId>io.papermc.paper</groupId>
+      <artifactId>paper-api</artifactId>
+      <version>26.1.2.build.74-stable</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- bStats -->
+    <dependency>
+      <groupId>org.bstats</groupId>
+      <artifactId>bstats-bukkit</artifactId>
+      <version>3.1.0</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- PlaceholderAPI -->
+    <dependency>
+      <groupId>me.clip</groupId>
+      <artifactId>placeholderapi</artifactId>
+      <version>2.11.6</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- MariaDB -->
+    <dependency>
+      <groupId>org.mariadb.jdbc</groupId>
+      <artifactId>mariadb-java-client</artifactId>
+      <version>3.3.2</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- HikariDB (JDBC Connection Pool Manager) -->
+    <dependency>
+      <groupId>com.zaxxer</groupId>
+      <artifactId>HikariCP</artifactId>
+      <version>4.0.3</version>
+      <scope>compile</scope>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <resources>
+      <resource>
+        <filtering>true</filtering>
+        <directory>src/main/resources</directory>
+      </resource>
+    </resources>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.6.0</version>
+        <configuration>
+
+          <relocations>
+            <relocation>
+              <pattern>org.bstats</pattern>
+              <shadedPattern>com.sulphate.chatcolor2.lib.org.bstats</shadedPattern>
+            </relocation>
+
+            <relocation>
+              <pattern>org.mariadb</pattern>
+              <shadedPattern>com.sulphate.chatcolor2.lib.org.mariadb</shadedPattern>
+            </relocation>
+
+            <relocation>
+              <pattern>com.zaxxer</pattern>
+              <shadedPattern>com.sulphate.chatcolor2.lib.com.zaxxer</shadedPattern>
+            </relocation>
+          </relocations>
+
+          <filters>
+            <filter>
+              <artifact>*:*</artifact>
+              <excludes>
+                <exclude>org/slf4j/**</exclude>
+                <exclude>org/apache/**</exclude>
+                <exclude>org/checkerframework/**</exclude>
+                <exclude>waffle/**</exclude>
+                <exclude>com/github/**</exclude>
+                <exclude>com/google/**</exclude>
+                <exclude>com/sun/jna/platform/**</exclude>
+              </excludes>
+            </filter>
+          </filters>
+
+        </configuration>
+
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+          </execution>
+        </executions>
+
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

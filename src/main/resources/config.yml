@@ -1,0 +1,33 @@
+version: ${project.version}
+stats: true
+storage:
+  # Set this to "sql" if you want to use SQL.
+  type: yaml
+  # These settings do nothing if you're not using SQL.
+  # Supported databases: MySQL, MariaDB
+  database:
+    address: localhost
+    port: 3306
+    name: chatcolor_db
+    user: database_user
+    password: database_password
+settings:
+  event-priority: LOWEST
+  auto-save: true
+  save-interval: 10
+  color-override: false
+  notify-others: true
+  join-message: true
+  confirm-timeout: 15
+  default-color: '&f'
+  command-name: chatcolor
+  force-group-colors: true
+  default-color-enabled: true
+  command-opens-gui: false
+  ignore-symbol-prefixes: true
+  remove-inaccessible-colors: false
+placeholders:
+  - '[item]'
+default:
+  code: 1
+  color: '&f'
