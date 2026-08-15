@@ -13,6 +13,7 @@ storage:
     password: database_password
 settings:
   event-priority: LOWEST
+  debug: false
   auto-save: true
   save-interval: 10
   color-override: false

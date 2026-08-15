@@ -10,6 +10,7 @@ import com.sulphate.chatcolor2.utils.Config;
 import com.sulphate.chatcolor2.utils.GeneralUtils;
 import com.sulphate.chatcolor2.utils.Reloadable;
 import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -73,9 +74,54 @@ public class ChatListener implements Listener, Reloadable {
     public void onModernEvent(AsyncChatEvent event) {
         String message = LEGACY_SERIALIZER.serialize(event.message());
 
+        debugLog("raw: " + showCodes(message));
+
         handleChat(event.getPlayer(), message, event.isCancelled(), coloured -> {
-            event.message(LEGACY_SERIALIZER.deserialize(coloured));
+            debugLog("colourised: " + showCodes(coloured));
+
+            // LPC (LuckPerms Chat Formatter) rebuilds messages from their plain text, so component colours
+            // set here are discarded. When LPC is present and the player can use colours in it, inject the
+            // colour as literal legacy codes instead: they survive plain-text serialization and are rendered
+            // by LPC's own legacy colour parser. Hex (§x) colours cannot be represented there, so they keep
+            // using component colours.
+            if (shouldInjectLegacyCodes(event.getPlayer(), coloured)) {
+                event.message(Component.text(coloured.replace('§', '&')));
+                debugLog("final: legacy codes injected for LPC");
+            }
+            else {
+                event.message(LEGACY_SERIALIZER.deserialize(coloured));
+                debugLog("final: component colours set");
+            }
         }, event);
+    }
+
+    private static boolean shouldInjectLegacyCodes(Player player, String coloured) {
+        if (coloured == null || coloured.indexOf('§') == -1) {
+            return false;
+        }
+
+        // LPC's legacy parser cannot render hex (§x) colours.
+        if (coloured.contains("§x")) {
+            return false;
+        }
+
+        org.bukkit.plugin.Plugin lpc = Bukkit.getPluginManager().getPlugin("LPC");
+
+        if (lpc == null || !lpc.isEnabled()) {
+            return false;
+        }
+
+        return player.hasPermission("lpc.chatcolor");
+    }
+
+    private void debugLog(String message) {
+        if (mainConfig.getBoolean("settings.debug", false)) {
+            Bukkit.getConsoleSender().sendMessage("[ChatColor2 debug] " + message);
+        }
+    }
+
+    private static String showCodes(String message) {
+        return message.replace('§', '&');
     }
 
     private void handleChat(Player player, String message, boolean cancelled, Consumer<String> messageSetter, PlayerEvent event) {

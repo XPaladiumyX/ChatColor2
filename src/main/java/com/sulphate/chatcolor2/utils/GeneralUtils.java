@@ -397,7 +397,14 @@ public class GeneralUtils implements Reloadable {
         String colourisedMessage = message;
 
         if (isCustomColour(colour)) {
-            colour = customColoursManager.getCustomColour(colour);
+            String resolved = customColoursManager.getCustomColour(colour);
+
+            // If the custom colour cannot be resolved, don't corrupt the message (or produce "null" prefixes).
+            if (resolved == null) {
+                return colourisedMessage;
+            }
+
+            colour = resolved;
         }
 
         // Check the override if the coloured message is different.
@@ -566,7 +573,15 @@ public class GeneralUtils implements Reloadable {
         }
 
         if (colour.startsWith("%")) {
-            return colour;
+            // Custom colours are looked up by their key, e.g. %bright-rainbow.
+            // Return a readable name (e.g. "Bright Rainbow") instead of the raw key.
+            String resolved = customColoursManager.getCustomColour(colour);
+
+            if (resolved == null) {
+                return colour;
+            }
+
+            return getReadableCustomColourName(colour);
         }
         else if (colour.startsWith("&u")) {
             return "rainbow";
@@ -604,6 +619,25 @@ public class GeneralUtils implements Reloadable {
 
     public String getModifierName(String modifier) {
         return modifierCodeToNameMap.get(modifier);
+    }
+
+    // Turns a custom colour key into a readable name, e.g. %bright-rainbow -> Bright Rainbow.
+    private String getReadableCustomColourName(String colour) {
+        String name = colour.substring(1);
+        String[] words = name.split("[^0-9a-zA-Z]");
+        StringBuilder builder = new StringBuilder();
+
+        for (String word : words) {
+            if (word.isEmpty()) {
+                continue;
+            }
+
+            builder.append(Character.toUpperCase(word.charAt(0)));
+            builder.append(word.substring(1).toLowerCase(Locale.ENGLISH));
+            builder.append(' ');
+        }
+
+        return builder.toString().trim();
     }
 
     // Gets the default color for a player, taking into account group color (if they are online).
