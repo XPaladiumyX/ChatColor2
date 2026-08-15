@@ -233,14 +233,36 @@ public class ChatColor extends JavaPlugin {
         EventPriority chatPriority = EventPriority.valueOf(config.getString("settings.event-priority"));
         chatListener = new ChatListener(configsManager, generalUtils, groupColoursManager, playerDataStore);
 
-        EventExecutor executor = (listener, event) -> {
-            if (listener instanceof ChatListener && event instanceof AsyncPlayerChatEvent) {
-                ((ChatListener) listener).onEvent((AsyncPlayerChatEvent) event);
-            }
-        };
+        // Attempt to register the modern (component-based) chat event if it is available.
+        // This is the Paper chat pipeline and ensures colours work on modern versions (1.26.1.2+).
+        // Falls back to the legacy chat event on servers where it is not available.
+        boolean registeredModernChatEvent = false;
 
-        // Attempt to register
-        manager.registerEvent(AsyncPlayerChatEvent.class, chatListener, chatPriority, executor, this, false);
+        try {
+            Class.forName("io.papermc.paper.event.player.AsyncChatEvent");
+
+            EventExecutor executor = (listener, event) -> {
+                if (listener instanceof ChatListener && event instanceof io.papermc.paper.event.player.AsyncChatEvent) {
+                    ((ChatListener) listener).onModernEvent((io.papermc.paper.event.player.AsyncChatEvent) event);
+                }
+            };
+
+            manager.registerEvent(io.papermc.paper.event.player.AsyncChatEvent.class, chatListener, chatPriority, executor, this, false);
+            registeredModernChatEvent = true;
+        }
+        catch (ClassNotFoundException | NoClassDefFoundError ex) {
+            // Modern chat event is not available, fall back to the legacy event.
+        }
+
+        if (!registeredModernChatEvent) {
+            EventExecutor executor = (listener, event) -> {
+                if (listener instanceof ChatListener && event instanceof AsyncPlayerChatEvent) {
+                    ((ChatListener) listener).onEvent((AsyncPlayerChatEvent) event);
+                }
+            };
+
+            manager.registerEvent(AsyncPlayerChatEvent.class, chatListener, chatPriority, executor, this, false);
+        }
 
         joinListener = new PlayerJoinListener(
                 M, configsManager, generalUtils, customColoursManager, groupColoursManager, playerDataStore

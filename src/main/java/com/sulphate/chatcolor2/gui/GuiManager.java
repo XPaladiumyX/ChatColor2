@@ -184,7 +184,22 @@ public class GuiManager implements Reloadable, Listener {
             String soundName = section.getString(key);
 
             try {
-                Sound sound = RegistryAccess.registryAccess().getRegistry(RegistryKey.SOUND_EVENT).match(soundName);
+                org.bukkit.Registry<Sound> soundRegistry = RegistryAccess.registryAccess().getRegistry(RegistryKey.SOUND_EVENT);
+                Sound sound = soundRegistry.match(soundName);
+
+                // Fall back to legacy enum-style names, e.g. ENTITY_EXPERIENCE_ORB_PICKUP -> entity.experience_orb.pickup.
+                // A naive underscore-to-dot replacement would break names containing internal underscores (e.g. EXPERIENCE_ORB),
+                // so compare the enum form against each registry key instead.
+                if (sound == null) {
+                    String enumForm = soundName.toLowerCase(Locale.ROOT).replace(' ', '_');
+
+                    for (Sound candidate : soundRegistry) {
+                        if (candidate.getKey().getKey().replace('.', '_').equals(enumForm)) {
+                            sound = candidate;
+                            break;
+                        }
+                    }
+                }
 
                 if (sound != null) {
                     return sound;

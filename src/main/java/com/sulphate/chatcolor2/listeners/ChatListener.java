@@ -9,20 +9,26 @@ import com.sulphate.chatcolor2.managers.GroupColoursManager;
 import com.sulphate.chatcolor2.utils.Config;
 import com.sulphate.chatcolor2.utils.GeneralUtils;
 import com.sulphate.chatcolor2.utils.Reloadable;
+import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerEvent;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 public class ChatListener implements Listener, Reloadable {
 
     private static final Pattern SYMBOLS_REGEX = Pattern.compile("^[!^\"£$%*()\\[\\]{}'#@~;:,./<>?\\\\|\\-_=+]+[^!^\"£$%&*()\\[\\]{}'#@~;:,./<>?\\\\|\\-_=+]+");
+
+    private static final LegacyComponentSerializer LEGACY_SERIALIZER = LegacyComponentSerializer.legacySection();
 
     private final ConfigsManager configsManager;
     private final GeneralUtils generalUtils;
@@ -58,12 +64,24 @@ public class ChatListener implements Listener, Reloadable {
         }
     }
 
+    // Legacy chat path (used as a fallback on non-Paper servers).
     public void onEvent(AsyncPlayerChatEvent event) {
-        Player player = event.getPlayer();
-        String message = event.getMessage();
+        handleChat(event.getPlayer(), event.getMessage(), event.isCancelled(), event::setMessage, event);
+    }
+
+    // Modern chat path (Paper) - works with components, ensuring colours work on 1.26.1.2+.
+    public void onModernEvent(AsyncChatEvent event) {
+        String message = LEGACY_SERIALIZER.serialize(event.message());
+
+        handleChat(event.getPlayer(), message, event.isCancelled(), coloured -> {
+            event.message(LEGACY_SERIALIZER.deserialize(coloured));
+        }, event);
+    }
+
+    private void handleChat(Player player, String message, boolean cancelled, Consumer<String> messageSetter, PlayerEvent event) {
         UUID uuid = player.getUniqueId();
 
-        if (event.isCancelled() || checkHasSymbolPrefix(message) || pausedPlayers.contains(player)) {
+        if (cancelled || checkHasSymbolPrefix(message) || pausedPlayers.contains(player)) {
             return;
         }
 
@@ -74,7 +92,7 @@ public class ChatListener implements Listener, Reloadable {
         if (dataStore.getColour(uuid) == null) {
             if (defaultColourEnabled) {
                 String defaultColor = mainConfig.getString("default.color");
-                colourAndModify(player, message, defaultColor, event);
+                colourAndModify(player, message, defaultColor, messageSetter, event);
             }
 
             return;
@@ -108,7 +126,7 @@ public class ChatListener implements Listener, Reloadable {
             }
         }
 
-        colourAndModify(player, message, colour, event);
+        colourAndModify(player, message, colour, messageSetter, event);
     }
 
     private boolean checkHasSymbolPrefix(String message) {
@@ -122,7 +140,7 @@ public class ChatListener implements Listener, Reloadable {
         }
     }
 
-    private void colourAndModify(Player player, String message, String colour, AsyncPlayerChatEvent event) {
+    private void colourAndModify(Player player, String message, String colour, Consumer<String> messageSetter, PlayerEvent event) {
         if (GeneralUtils.isDifferentWhenColourised(message)) {
             boolean override = mainConfig.getBoolean(Setting.COLOR_OVERRIDE.getConfigPath());
 
@@ -132,10 +150,10 @@ public class ChatListener implements Listener, Reloadable {
                     message = org.bukkit.ChatColor.stripColor(GeneralUtils.colourise(message));
                 }
 
-                event.setMessage(message);
+                messageSetter.accept(message);
             }
             else {
-                event.setMessage(GeneralUtils.colourise(message));
+                messageSetter.accept(GeneralUtils.colourise(message));
             }
         }
         else {
@@ -149,7 +167,7 @@ public class ChatListener implements Listener, Reloadable {
             }
 
             if (eventSucceeded) {
-                event.setMessage(generalUtils.colouriseMessage(colour, message, false));
+                messageSetter.accept(generalUtils.colouriseMessage(colour, message, false));
             }
         }
     }
@@ -242,7 +260,7 @@ public class ChatListener implements Listener, Reloadable {
         }
     }
 
-    private boolean fireEvent(Player player, String message, String colour, AsyncPlayerChatEvent chatEvent) {
+    private boolean fireEvent(Player player, String message, String colour, PlayerEvent chatEvent) {
         ChatColorEvent chatColorEvent = new ChatColorEvent(player, message, colour, chatEvent);
         Bukkit.getPluginManager().callEvent(chatColorEvent);
 

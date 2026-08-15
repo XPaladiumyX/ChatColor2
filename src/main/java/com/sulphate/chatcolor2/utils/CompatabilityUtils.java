@@ -28,14 +28,19 @@ public class CompatabilityUtils {
                 version = version.substring(0, dashIndex);
             }
 
-            // Split on '.' and parse the minor version (second part) as an int.
+            // Split on '.' and parse the major (minor) version as an int.
             // This avoids NumberFormatException ("multiple points") on versions like 1.26.1.2.
+            // Also supports the new versioning scheme without the "1." prefix, e.g. 26.1.2.build.74-stable.
             String[] parts = version.split("\\.");
             int minorVersion = 0;
 
-            if (parts.length > 1) {
+            if (parts.length > 0) {
+                // For old-style versions (1.x.y...), the minor version is the second part.
+                // For new-style versions (x.y.z...), it is the first part.
+                int majorIndex = (parts.length > 1 && parts[0].equals("1")) ? 1 : 0;
+
                 try {
-                    minorVersion = Integer.parseInt(parts[1]);
+                    minorVersion = Integer.parseInt(parts[majorIndex]);
                 }
                 catch (NumberFormatException ex) {
                     GeneralUtils.sendConsoleMessage("&6[ChatColor] &cError: Failed to parse server minor version from " + version + ", assuming a modern version.");

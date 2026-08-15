@@ -1,10 +1,12 @@
 package com.sulphate.chatcolor2.event;
 
+import io.papermc.paper.event.player.AsyncChatEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerEvent;
 import org.jetbrains.annotations.NotNull;
 
 public class ChatColorEvent extends Event implements Cancellable {
@@ -13,11 +15,19 @@ public class ChatColorEvent extends Event implements Cancellable {
     private final Player player;
     private final String message;
     private final String colour;
-    private final AsyncPlayerChatEvent chatEvent;
+    private final PlayerEvent chatEvent;
 
     private boolean cancelled;
 
     public ChatColorEvent(Player player, String message, String colour, AsyncPlayerChatEvent chatEvent) {
+        this(player, message, colour, (PlayerEvent) chatEvent);
+    }
+
+    public ChatColorEvent(Player player, String message, String colour, AsyncChatEvent chatEvent) {
+        this(player, message, colour, (PlayerEvent) chatEvent);
+    }
+
+    public ChatColorEvent(Player player, String message, String colour, PlayerEvent chatEvent) {
         super(true);
 
         handlerList = new HandlerList();
@@ -57,7 +67,7 @@ public class ChatColorEvent extends Event implements Cancellable {
         return colour;
     }
 
-    public AsyncPlayerChatEvent getChatEvent() {
+    public PlayerEvent getChatEvent() {
         return chatEvent;
     }
 
